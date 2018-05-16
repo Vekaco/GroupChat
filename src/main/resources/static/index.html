@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.4/sockjs.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.js"></script>
+    <script type="text/javascript">
+        var stompClient = null;
+
+        function login() {
+            var socket = new SockJS("/chat");
+            stompClient = Stomp.over(socket);
+            stompClient.connect({},function (frame) {
+                setConnected(true);
+                console.log(frame);
+                stompClient.subscribe("/from:server/greetings", function (response) {
+                    showGreeting(JSON.parse(response.body).content);
+                });
+                stompClient.subscribe("/from:server/messaging", function (response) {
+                    showMessage(JSON.parse(response.body).message);
+                })
+                sendName();
+            });
+
+        }
+
+        function setConnected(connected) {
+            document.getElementById("message").disabled=!connected;
+            document.getElementById("send").disabled=!connected;
+            document.getElementById("name").disabled=connected;
+            document.getElementById("connect").disabled=connected;
+            document.getElementById("disconnect").disabled=!connected;
+        }
+
+        function showGreeting(content) {
+            var history = document.getElementById('history');
+            var p = document.createElement('p');
+            p.style.wordWrap = 'break-word';
+            p.appendChild(document.createTextNode(content));
+            history.appendChild(p);
+        }
+
+        function showMessage(message) {
+            var history = document.getElementById('history');
+            var p = document.createElement('p');
+            p.style.wordWrap = 'break-word';
+            p.appendChild(document.createTextNode(message));
+            history.appendChild(p);
+        }
+
+        function sendName() {
+            var name = document.getElementById("name").value;
+            stompClient.send("/from:app/login", {}, JSON.stringify({'name':name}));
+        }
+
+        function sendMessage() {
+            var name = document.getElementById("name").value;
+            var message = document.getElementById("message").value;
+            stompClient.send("/from:app/messaging",{},JSON.stringify({'name':name, 'message':message}));
+
+        }
+        function logout() {
+            var name = document.getElementById("name").value;
+            stompClient.send("/from:app/logout",{}, JSON.stringify({'name':name}));
+            stompClient.disconnect();
+            setConnected(false);
+        }
+    </script>
+    <title>Welcome Group Chat!</title>
+</head>
+
+<body>
+<p id="history"></p> <br>
+<input id="message" placeholder="What wanna say?" disabled="disabled"/> <button id="send" disabled="disabled" onclick="sendMessage()">Send</button><br>
+<input id="name" placeholder="What's your name?"/> <button id="connect" onclick="login()">Connect</button><button id="disconnect" disabled="disabled" onclick="logout()">Disconnect</button>
+</body>
+</html>
